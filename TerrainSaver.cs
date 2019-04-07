@@ -11,21 +11,17 @@ using Random = UnityEngine.Random;
 public class TerrainSaver : MonoBehaviour
 {
 
-    public Terrain terrain;
+    private Terrain terrain;
     private TerrainData tData;
 
+    public float standardHeight = 0.1f;
 
-    public float montainWidth;
-    public int countMounts;
-
-    public bool moreMountains = false;
-
-    public int biomWidth;
     public int biomCount = 25;
     public float cityBiom = 0.25f;
     public float waterBiom = 0.25f;
     public float forestBiom = 0.25f;
     public float fieldBiom = 0.25f;
+    public float mountBiom = 0.25f;
 
 
     private int xTerrainRes;
@@ -39,6 +35,7 @@ public class TerrainSaver : MonoBehaviour
     private float[,] heightMap;
 
     private List<Biome> biomes = new List<Biome>();
+    private List<BiomeCorePoint> allCorePoints = new List<BiomeCorePoint>();
     private List<BiomePoint> allPoints = new List<BiomePoint>();
     // Use this for initialization
     void Start()
@@ -51,10 +48,11 @@ public class TerrainSaver : MonoBehaviour
         this.xTextureRes = tData.alphamapWidth;
         this.yTextureRes = tData.alphamapHeight;
 
-        this.biomes.Add(new Biome("city", 0, cityBiom, 0));
-        this.biomes.Add(new Biome("forest", 1, forestBiom, 1));
-        this.biomes.Add(new Biome("water", 2, waterBiom, 0));
-        this.biomes.Add(new Biome("field", 3, fieldBiom, 1));
+        this.biomes.Add(new Biome("city", 0, cityBiom, 0.05f, false));
+        this.biomes.Add(new Biome("forest", 1, forestBiom, 0.1f, false));
+        this.biomes.Add(new Biome("water", 2, waterBiom, 0.5f, true));
+        this.biomes.Add(new Biome("field", 3, fieldBiom, 0.25f, false));
+        this.biomes.Add(new Biome("mountain", 4, mountBiom, 0.8f, false));
 
     }
 
@@ -69,15 +67,11 @@ public class TerrainSaver : MonoBehaviour
         if (GUI.Button(new Rect(10, 10, 100, 25), "Wrinkle"))
         {
             this.createAlphaMaps();
-            this.createMountains();
-            if (moreMountains)
-            {
-                this.createAlphaMapsOnMontains();
-            }
-            else
-            {
-                this.destroyMountainsOnNonMountainAlphaMaps();
-            }
+            print("Create AlphaMaps");
+            this.calcBorders();
+            print("Calc Borders");
+            this.createMountainsByBorders();
+            print("Create Mountains by borders");
         }
         if (GUI.Button(new Rect(10, 40, 100, 25), "Reset"))
         {
@@ -87,14 +81,61 @@ public class TerrainSaver : MonoBehaviour
 
     }
 
-
-
-    float calcHeight(float x, float range)
+    public int getBiomeIndexByTextureIndex(int textureIndex)
     {
-        float maxHeight = 0.1f / 8;
+        for (int i = 0; i < this.biomes.Count; i++)
+        {
+            if (this.biomes[i].textureIndex == textureIndex)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+    public void calcBorders()
+    {
+        Point tempPoint = new Point();
+        List<Point> aroundPixels;
+        int textureIndex = 0;
+        for (int j = 0; j < this.allPoints.Count; j++)
+        {
+            textureIndex = this.allPoints[j].corePoint.textureIndex;
+            aroundPixels = this.allPoints[j].getArroundPoints();
+            for (int i = 0; i < aroundPixels.Count; i++)
+            {
+                if (textureIndex != this.alphaMap.getSettedIndex(aroundPixels[i]))
+                {
+                    int biomeId = this.getBiomeIndexByTextureIndex(textureIndex);
+                    this.biomes[biomeId].addBorderPoint(this.allPoints[j]);
+                    i = aroundPixels.Count;
+                }
+            }
+        }
+        //for (int a = 0; a < this.biomes.Count; a++)
+        //{
+        //    print(this.biomes[a].name + " : " + this.biomes[a].borderPoints.Count);
+
+        //    for (int j = 0; j < this.biomes[a].borderPoints.Count; j++)
+        //    {
+        //        this.alphaMap.aMap[this.biomes[a].borderPoints[j].x, this.biomes[a].borderPoints[j].y, this.biomes[a].textureIndex] = 0;
+
+        //    }
+        //}
+        //tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
+
+    }
+
+    float calcHeight(float x, float range, float maxHeight)
+    {
         float zeroPointWidth = (1 / (range * 2));
         float cosValue = (float)Math.Cos(zeroPointWidth * Math.PI * x);
         return maxHeight * (cosValue + 1);
+    }
+
+    float calcHeight(float x, float range)
+    {
+        float maxHeight = 0.1f / 20;
+        return this.calcHeight(x, range, maxHeight);
     }
     void resetPoints()
     {
@@ -105,7 +146,7 @@ public class TerrainSaver : MonoBehaviour
         {
             for (int x = 0; x < xTerrainRes; x++)
             {
-                heights[x, y] = 0;
+                heights[x, y] = standardHeight;
             }
         }
         tData.SetHeights(0, 0, heights);
@@ -131,12 +172,12 @@ public class TerrainSaver : MonoBehaviour
         return (int)bound;
     }
 
-    void getUpdateALLPoint()
+    void getUpdateAllCorePoints()
     {
-        this.allPoints = new List<BiomePoint>();
+        this.allCorePoints = new List<BiomeCorePoint>();
         for (int i = 0; i < this.biomes.Count; i++)
         {
-            this.allPoints.AddRange(this.biomes[i].corePoints);
+            this.allCorePoints.AddRange(this.biomes[i].corePoints);
         }
     }
     List<int> getNoMountainsIndexes()
@@ -151,10 +192,24 @@ public class TerrainSaver : MonoBehaviour
         }
         return returnList;
     }
+
+    List<int> waterBiomesIndexes()
+    {
+        List<int> returnList = new List<int>();
+        for (int i = 0; i < this.biomes.Count; i++)
+        {
+            if (this.biomes[i].isWater == true)
+            {
+                returnList.Add(i);
+            }
+        }
+        return returnList;
+    }
+
     void createAlphaMaps()
     {
         resetAlphaMaps();
-        this.alphaMap = new AlphaMap(new float[this.xTextureRes, this.yTextureRes, 4]);
+        this.alphaMap = new AlphaMap(new float[this.xTextureRes, this.yTextureRes, 5]);
 
 
         for (int i = 0; i < this.biomes.Count; i++)
@@ -162,9 +217,10 @@ public class TerrainSaver : MonoBehaviour
             this.biomes[i].createRandomPoints(this.biomCount, this.xTextureRes, this.yTextureRes);
         }
 
-        this.getUpdateALLPoint();
+        this.getUpdateAllCorePoints();
 
         Point tempPoint = new Point();
+        BiomePoint newBiomePoint = new BiomePoint();
         List<int> diffValues;
         int minValue;
         int minIndex;
@@ -176,142 +232,131 @@ public class TerrainSaver : MonoBehaviour
             {
                 diffValues = new List<int>();
                 tempPoint.set(x, y);
-                for (int i = 0; i < this.allPoints.Count; i++)
+                for (int i = 0; i < this.allCorePoints.Count; i++)
                 {
-                    diffValues.Add(this.allPoints[i].getDiff(tempPoint));
+                    diffValues.Add(this.allCorePoints[i].getDiff(tempPoint));
                 }
 
                 minValue = diffValues.Min();
                 minIndex = diffValues.ToList().IndexOf(minValue);
-                if (minValue > this.biomWidth)
-                {
-                    this.alphaMap.aMap[x, y, this.biomes.Count - 1] = (float)1;
-                }
-                else
-                {
-                    this.alphaMap.aMap[x, y, allPoints[minIndex].textureIndex] = (float)1;
-                }
+                newBiomePoint = new BiomePoint(x, y, allCorePoints[minIndex], minIndex);
+
+                this.allPoints.Add(newBiomePoint);
+                // uncomment this if-branch to activate an maximal biomwidth
+                //if (minValue <= this.biomWidth)
+                //{
+                this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)1;
+                this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
+                //}
+                //else
+                //{
+                //    this.alphaMap.aMap[x, y, this.biomes[this.biomes.Count - 1].textureIndex] = (float)1;
+                //    this.biomes[this.getBiomeIndexByTextureIndex(this.biomes[this.biomes.Count - 1].textureIndex)].allPoints.Add(newBiomePoint);
+
+                //}
+
+
+                // uncomment to mark the biome cores
                 //if (minValue == 0 || minValue == 1)
                 //{
-                //    this.alphaMap.aMap[x, y, allPoints[minIndex].textureIndex] = (float)0;
+                //    this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)0;
+                //    this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
+
                 //}
             }
         }
         tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
     }
-    void createMountains()
+    void createMountainsByBorders()
     {
-        //this.alphaMap = new AlphaMap(tData.GetAlphamaps(0, 0, tData.alphamapWidth, tData.alphamapHeight));
+        int biomeSize;
+        float mountPercentage;
+        int mountCount;
+        Point newPoint;
+        List<float> diffValues;
+        float diff;
+        float minValue;
+        int minIndex;
+        int maxMountainWidth;
+        float maxHeight;
         resetPoints();
+
         this.heightMap = tData.GetHeights(0, 0, xTerrainRes, yTerrainRes);
 
-        //float range = (xRes + yRes) / strength;
-        for (var i = 0; i < countMounts; i++)
+
+        for (int i = 0; i < this.biomes.Count; i++)
         {
-
-            Point newPoint = new Point();
-            newPoint.set(Random.Range(0, xTerrainRes), Random.Range(0, yTerrainRes));
-
-            int textureIndex = 0;
-            Point ltPoint = new Point();
-            Point lbPoint = new Point();
-            Point rtPoint = new Point();
-            Point rbPoint = new Point();
-            do
+            if (this.biomes[i].borderPoints.Count > 0)
             {
-                try
+                biomeSize = this.biomes[i].allPoints.Count;
+                mountPercentage = this.biomes[i].mountainsDegree;
+                mountCount = (int)(biomeSize * mountPercentage / 100);
+                print(this.biomes[i].name + ": " + biomeSize + " --> " + mountCount);
+                //mountCount = (int)20;
+                for (int j = 0; j < mountCount; j++)
                 {
-                    newPoint.set(Random.Range(0, xTerrainRes), Random.Range(0, yTerrainRes));
-                    textureIndex = this.alphaMap.getSettedIndex(newPoint);
+                    newPoint = this.biomes[i].allPoints[Random.Range(0, biomeSize)];
 
-                }
-                catch (Exception e)
-                {
-                    print(e);
-                    textureIndex = 0;
-                }
-            } while (this.getNoMountainsIndexes().Contains(textureIndex));
-
-
-
-            var leftBound = this.getMinBound(newPoint.x, montainWidth, 0);
-            var rightBound = this.getMaxBound(newPoint.x, montainWidth, xTerrainRes);
-            var topBound = this.getMinBound(newPoint.y, montainWidth, 0);
-            var bottomBound = this.getMaxBound(newPoint.y, montainWidth, yTerrainRes);
-
-            Point tempPoint = new Point();
-            for (var y = topBound; y < bottomBound; y++)
-            {
-                for (var x = leftBound; x < rightBound; x++)
-                {
-                    //tempPoint.set(x,y);
-                    //float diff = (Math.Abs(newPoint.y - y) + Math.Abs(newPoint.x - x));
-                    float diff = (float)Math.Sqrt(Math.Pow(newPoint.y - y, 2) + Math.Pow(newPoint.x - x, 2));
-                    //float diff = newPoint.getDiff(tempPoint);
-
-                    if (diff <= montainWidth)
+                    diffValues = new List<float>();
+                    for (int k = 0; k < this.biomes[i].borderPoints.Count; k++)
                     {
-                        this.heightMap[x, y] = this.heightMap[x, y] + calcHeight(diff, montainWidth) - calcHeight(montainWidth, montainWidth);
+                        diffValues.Add((float)Math.Sqrt(Math.Pow(newPoint.y - this.biomes[i].borderPoints[k].y, 2) + Math.Pow(newPoint.x - this.biomes[i].borderPoints[k].x, 2)));
                     }
-                }
-            }
-        }
+                    minValue = diffValues.Min();
+                    minIndex = diffValues.ToList().IndexOf(minValue);
+                    maxMountainWidth = (int)minValue;
 
-        tData.SetHeights(0, 0, this.heightMap);
-
-    }
-    void createAlphaMapsOnMontains()
-    {
-        Point tempPoint = new Point();
-        int currentIndex;
-        for (int y = 0; y < this.yTextureRes; y++)
-        {
-            for (int x = 0; x < this.xTextureRes; x++)
-            {
-                tempPoint.set(x, y);
-                if (this.heightMap[x, y] > 0)
-                {
-                    currentIndex = this.alphaMap.getSettedIndex(tempPoint);
-                    if (this.getNoMountainsIndexes().Contains(currentIndex))
+                    var leftBound = this.getMinBound(newPoint.x, maxMountainWidth, 0);
+                    var rightBound = this.getMaxBound(newPoint.x, maxMountainWidth, xTerrainRes);
+                    var topBound = this.getMinBound(newPoint.y, maxMountainWidth, 0);
+                    var bottomBound = this.getMaxBound(newPoint.y, maxMountainWidth, yTerrainRes);
+                    for (var y = topBound; y < bottomBound; y++)
                     {
-                        this.alphaMap.aMap[x, y, currentIndex] = (float)0;
-                        this.alphaMap.aMap[x, y, this.biomes.Count - 1] = (float)1;
+                        for (var x = leftBound; x < rightBound; x++)
+                        {
+                            diff = (float)Math.Sqrt(Math.Pow(newPoint.y - y, 2) + Math.Pow(newPoint.x - x, 2));
+
+                            if (diff <= maxMountainWidth)
+                            {
+                                //float maxHeight = 0.1f / 20;
+                                maxHeight = (float)(maxMountainWidth * mountPercentage / 10000);
+
+                                if (this.biomes[i].isWater)
+                                {
+                                    maxHeight = (-1) * maxHeight;
+                                }
+                                this.heightMap[x, y] = this.heightMap[x, y] + calcHeight(diff, maxMountainWidth, maxHeight) - calcHeight(maxMountainWidth, maxMountainWidth, maxHeight);
+                            }
+
+                        }
                     }
 
                 }
             }
         }
-        tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
+        //tData.SetHeights(0, 0, this.heightMap);
+
+        this.setHeightMapWithStandardHeights();
+
     }
 
-    void destroyMountainsOnNonMountainAlphaMaps()
+    void setHeightMapWithStandardHeights()
     {
-        Point tempPoint = new Point();
-        int currentIndex;
-        for (int y = 0; y < this.yTextureRes; y++)
+        float[,] newHeightMap = new float[this.heightMap.GetLength(0), this.heightMap.GetLength(1)];
+        for (int y = 0; y < this.heightMap.GetLength(0); y++)
         {
-            for (int x = 0; x < this.xTextureRes; x++)
+            for (int x = 0; x < this.heightMap.GetLength(1); x++)
             {
-                tempPoint.set(x, y);
-
-                currentIndex = this.alphaMap.getSettedIndex(tempPoint);
-                if (this.getNoMountainsIndexes().Contains(currentIndex))
-                {
-
-                    if (this.heightMap[x, y] > 0)
-                    {
-                        this.heightMap[x, y] = (float)0;
-                    }
-
-                }
+                newHeightMap[x, y] = standardHeight + this.heightMap[x, y];
             }
         }
         tData.SetHeights(0, 0, this.heightMap);
+        this.heightMap = newHeightMap;
     }
-
+   
     void resetAlphaMaps()
     {
-        float[,,] map = new float[this.xTextureRes, this.yTextureRes, 4];
+        float[,,] map = new float[this.xTextureRes, this.yTextureRes, 5];
         tData.SetAlphamaps(0, 0, map);
     }
 

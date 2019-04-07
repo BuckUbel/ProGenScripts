@@ -2,6 +2,11 @@
 using System.Collections.Generic;
 using Assets.Scripts;
 using System.Linq;
+using System;
+using Assets.Scripts;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class AlphaMap
@@ -9,7 +14,7 @@ public class AlphaMap
 
     public float[,,] aMap;
 
-	public AlphaMap() { }
+    public AlphaMap() { }
 
     public AlphaMap(float[,,] map)
     {
@@ -27,7 +32,15 @@ public class AlphaMap
 
         for (int i = 0; i < lastDimArray.Length; i++)
         {
-                int a = (int) this.aMap[p.x, p.y, i];
+            int a;
+            try
+            {
+                a = (int)this.aMap[p.x, p.y, i];
+            }
+            catch (Exception e)
+            {
+                a = 0;
+            }
             lastDimArray[i] = a;
         }
 
