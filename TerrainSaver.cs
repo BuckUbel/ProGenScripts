@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Assets.Scripts;
 using System.Linq;
+using Assets;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -22,6 +23,16 @@ public class TerrainSaver : MonoBehaviour
     [Range(0, 1)]
     public float mountBiom = 0.25f;
 
+    // waterObject
+    public GameObject waterObjectTransform;
+
+    [Header("City Game objects")]
+
+    public GameObject[] cityStages;
+    public GameObject[] cityGroundFloors;
+    public GameObject[] cityRooftops;
+    public CityObjects CityGameObjects;
+
 
     // this terrain object
     private Terrain terrain;
@@ -31,11 +42,15 @@ public class TerrainSaver : MonoBehaviour
 
     // the standard height for the map
     // is necessary, because the water needs space under the normal map
-    private float standardHeight = 0.1f;
+    private float standardHeight = 0.05f;
+    private float waterHeight = 0.0499f;
 
     // the resolution of terrain
     private int xTerrainRes;
     private int yTerrainRes;
+    private float terrainWidthScale;
+    private float terrainLengthScale;
+    private float terrainHeightScale;
 
     // the resolution of texture
     private int xTextureRes;
@@ -68,10 +83,16 @@ public class TerrainSaver : MonoBehaviour
         // get the terrain resolution
         xTerrainRes = tData.heightmapWidth;
         yTerrainRes = tData.heightmapHeight;
+        terrainWidthScale = tData.size.x;
+        terrainLengthScale = tData.size.z;
+        terrainHeightScale = tData.size.y;
 
         // get the texture resolution
         this.xTextureRes = tData.alphamapWidth;
         this.yTextureRes = tData.alphamapHeight;
+
+        // load all Gameobjects in the other objects
+        this.CityGameObjects = new CityObjects(this.cityStages, this.cityGroundFloors, this.cityRooftops);
 
         // generate the different Biomes
         this.biomes.Add(new Biome("city", 0, cityBiom, 0.05f, false));
@@ -98,7 +119,33 @@ public class TerrainSaver : MonoBehaviour
             this.createMountainsByBorders();
             print("Create Mountains by borders");
         }
-        if (GUI.Button(new Rect(10, 40, 100, 25), "Reset"))
+        if (GUI.Button(new Rect(10, 40, 100, 25), "Create Objects"))
+        {
+            // create Waterobject
+            GameObject waterGameObject = Instantiate(waterObjectTransform, new Vector3(0, terrainHeightScale * waterHeight, 0), Quaternion.identity) as GameObject;
+            waterGameObject.transform.localScale = new Vector3(terrainWidthScale, 1, terrainLengthScale);
+
+            //create city objects
+
+            GameObject cityGroundFloor = Instantiate(cityGroundFloors[0], new Vector3(0, terrainHeightScale * standardHeight, 0), Quaternion.identity) as GameObject;
+            cityGroundFloor.transform.localScale = new Vector3(100, 100, 100);
+            cityGroundFloor.AddComponent<MeshFilter>();
+            float groundHeight = 6.6f;
+            // float groundHeight = cityGroundFloor.GetComponent<MeshFilter>().mesh.bounds.max.y;
+
+
+            GameObject cityStage = Instantiate(cityStages[0], new Vector3(0, terrainHeightScale * standardHeight + groundHeight, 0), Quaternion.identity) as GameObject;
+            cityStage.transform.localScale = new Vector3(100, 100, 100);
+            cityStage.AddComponent<MeshFilter>();
+            float cityHeight = 12.9f;
+            // float cityHeight = cityStage.GetComponent<MeshFilter>().mesh.bounds.max.y;
+
+
+            GameObject cityRoofTop = Instantiate(cityRooftops[0], new Vector3(0, terrainHeightScale * standardHeight + cityHeight, 0), Quaternion.identity) as GameObject;
+            cityRoofTop.transform.localScale = new Vector3(100, 100, 100);
+        }
+
+        if (GUI.Button(new Rect(10, 70, 100, 25), "Reset"))
         {
             resetPoints();
             resetAlphaMaps();
