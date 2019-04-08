@@ -1,13 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Assets.Scripts;
+﻿using Assets.Scripts;
 using System.Linq;
 using System;
-using Assets.Scripts;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
 
 public class AlphaMap
 {

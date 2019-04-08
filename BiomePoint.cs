@@ -1,12 +1,6 @@
 ﻿
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using Assets.Scripts;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System;
 
 namespace Assets.Scripts
 {
@@ -32,8 +26,8 @@ namespace Assets.Scripts
             this.y = y;
             this.corePoint = corePoint;
             this.corePointId = corePointId;
-            this.calcDiff();
-            this.calcAngle();
+            //this.calcDiff();
+            //this.calcAngle();
 
         }
 
