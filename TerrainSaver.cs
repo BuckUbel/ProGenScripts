@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Assets.Scripts;
 using System.Linq;
@@ -8,8 +8,9 @@ using Random = UnityEngine.Random;
 
 public class TerrainSaver : MonoBehaviour
 {
-
-    // 
+    static System.Random rnd;
+    
+    //
     public int biomCount = 25;
 
     [Range(0, 1)]
@@ -28,8 +29,8 @@ public class TerrainSaver : MonoBehaviour
 
     [Header("City Game objects")]
 
-    public GameObject[] cityStages;
     public GameObject[] cityGroundFloors;
+    public GameObject[] cityStages;
     public GameObject[] cityRooftops;
     public CityObjects CityGameObjects;
 
@@ -74,6 +75,9 @@ public class TerrainSaver : MonoBehaviour
 
     void Start()
     {
+        var seed = (new System.Random()).Next();
+        print(seed);
+        rnd = new System.Random(seed);
 
         // get the terrain component
         this.terrain = transform.GetComponent<Terrain>();
@@ -86,6 +90,9 @@ public class TerrainSaver : MonoBehaviour
         terrainWidthScale = tData.size.x;
         terrainLengthScale = tData.size.z;
         terrainHeightScale = tData.size.y;
+
+        // transform terrain to middle point
+        terrain.transform.position = new Vector3(-terrainWidthScale / 2, 0, -terrainLengthScale / 2);
 
         // get the texture resolution
         this.xTextureRes = tData.alphamapWidth;
@@ -108,7 +115,7 @@ public class TerrainSaver : MonoBehaviour
     {
         // the functions, which will called, if the button is clicked
 
-        if (GUI.Button(new Rect(10, 10, 100, 25), "Wrinkle"))
+        if (GUI.Button(new Rect(10, 10, 100, 25), "Generate"))
         {
             resetPoints();
             resetAlphaMaps();
@@ -126,22 +133,23 @@ public class TerrainSaver : MonoBehaviour
             waterGameObject.transform.localScale = new Vector3(terrainWidthScale, 1, terrainLengthScale);
 
             //create city objects
-
-            GameObject cityGroundFloor = Instantiate(cityGroundFloors[0], new Vector3(0, terrainHeightScale * standardHeight, 0), Quaternion.identity) as GameObject;
+            int rndFloor = rnd.Next(cityGroundFloors.Length);
+            GameObject cityGroundFloor = Instantiate(cityGroundFloors[rndFloor], new Vector3(0, terrainHeightScale * standardHeight, 0), Quaternion.identity) as GameObject;
             cityGroundFloor.transform.localScale = new Vector3(100, 100, 100);
             cityGroundFloor.AddComponent<MeshFilter>();
             float groundHeight = 6.6f;
             // float groundHeight = cityGroundFloor.GetComponent<MeshFilter>().mesh.bounds.max.y;
 
-
-            GameObject cityStage = Instantiate(cityStages[0], new Vector3(0, terrainHeightScale * standardHeight + groundHeight, 0), Quaternion.identity) as GameObject;
+            int rndStage = rnd.Next(cityStages.Length);
+            GameObject cityStage = Instantiate(cityStages[rndStage], new Vector3(0, terrainHeightScale * standardHeight + groundHeight, 0), Quaternion.identity) as GameObject;
             cityStage.transform.localScale = new Vector3(100, 100, 100);
             cityStage.AddComponent<MeshFilter>();
+
             float cityHeight = 12.9f;
             // float cityHeight = cityStage.GetComponent<MeshFilter>().mesh.bounds.max.y;
 
-
-            GameObject cityRoofTop = Instantiate(cityRooftops[0], new Vector3(0, terrainHeightScale * standardHeight + cityHeight, 0), Quaternion.identity) as GameObject;
+            int rndRoof = rnd.Next(cityRooftops.Length);
+            GameObject cityRoofTop = Instantiate(cityRooftops[rndRoof], new Vector3(0, terrainHeightScale * standardHeight + cityHeight, 0), Quaternion.identity) as GameObject;
             cityRoofTop.transform.localScale = new Vector3(100, 100, 100);
         }
 
@@ -437,9 +445,3 @@ public class TerrainSaver : MonoBehaviour
     }
 
 }
-
-
-
-
-
-
