@@ -9,7 +9,7 @@ using Random = UnityEngine.Random;
 public class TerrainSaver : MonoBehaviour
 {
     static System.Random rnd;
-    
+
     //
     public int biomCount = 25;
 
@@ -276,24 +276,46 @@ public class TerrainSaver : MonoBehaviour
         Point tempPoint = new Point();
         BiomePoint newBiomePoint = new BiomePoint();
         List<int> diffValues;
-        int minValue;
-        int minIndex;
+        int minValue = int.MaxValue;
+        int secondMinValue = int.MaxValue;
+        int minIndex = -1;
+        int secondMinIndex = -1;
 
         // For each point on the alphamap...
         for (int y = 0; y < this.yTextureRes; y++)
         {
             for (int x = 0; x < this.xTextureRes; x++)
             {
-                // get the smallest diff
+                // reset values for diff calculation
                 diffValues = new List<int>();
+                minValue = int.MaxValue;
+                secondMinValue = int.MaxValue;
+
                 tempPoint.set(x, y);
-                for (int i = 0; i < this.allCorePoints.Count; i++)
+                
+                // get the smallest diff
+                for (int corePointIndex = 0; corePointIndex < this.allCorePoints.Count; corePointIndex++)
                 {
-                    diffValues.Add(this.allCorePoints[i].getDiff(tempPoint));
+                    int corePointDiff = this.allCorePoints[corePointIndex].getDiff(tempPoint);
+                    diffValues.Add(corePointDiff);
+                    if (corePointDiff < minValue)
+                    {
+                        secondMinValue = minValue;
+                        secondMinIndex = minIndex;
+
+                        minValue = corePointDiff;
+                        minIndex = corePointIndex;
+
+                    }
+                    else if (corePointDiff < secondMinValue)
+                    {
+                        secondMinValue = corePointDiff;
+                        secondMinIndex = corePointIndex;
+                    }
                 }
 
-                minValue = diffValues.Min();
-                minIndex = diffValues.ToList().IndexOf(minValue);
+                //minValue = diffValues.Min();
+                //minIndex = diffValues.ToList().IndexOf(minValue);
 
                 // create new BiomePoint on the base of the corePoint
                 newBiomePoint = new BiomePoint(x, y, allCorePoints[minIndex], minIndex);
@@ -314,14 +336,26 @@ public class TerrainSaver : MonoBehaviour
                  * }
                  */
 
+                 // border point --> points with almost euqal distances to two cores
+                 if((secondMinValue == minValue || secondMinValue == minValue+1 || secondMinValue == minValue-1) && allCorePoints[secondMinIndex].textureIndex != allCorePoints[minIndex].textureIndex)
+                {
+                    // biomes shares this area of border 
+                    this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)0;
+                    this.alphaMap.aMap[x, y, allCorePoints[secondMinIndex].textureIndex] = (float)0;
+                 
+                    // added to the borderpoints of this biome
+                    this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
+                    this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[secondMinIndex].textureIndex)].allPoints.Add(newBiomePoint);
+
+                }
                 // uncomment to mark the biome cores
-                /* if (minValue == 0 || minValue == 1)
-                 * {
-                 *   this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)0;
-                 *  this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
-                 *
-                 * }
-                 */
+                 if (minValue == 0 || minValue == 1)
+                  {
+                   this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)0;
+                   this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
+                 
+                  }
+                 
             }
         }
         tData.SetAlphamaps(0, 0, this.alphaMap.aMap);

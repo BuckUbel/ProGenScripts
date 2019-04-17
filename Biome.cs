@@ -28,6 +28,12 @@ namespace Assets.Scripts
             this.mountainsDegree = mountainsDegree;
             this.isWater = isWater;
         }
+        public void addCompletlyNewBorderPoint(BiomePoint bp)
+        {
+            this.borderPoints.Add(bp);
+            this.allPoints.Add(bp);
+        }
+
         public void addBorderPoint(BiomePoint bp)
         {
             this.borderPoints.Add(bp);
