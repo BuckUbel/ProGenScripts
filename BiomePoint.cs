@@ -9,8 +9,10 @@ namespace Assets.Scripts
         public int corePointId;
         public BiomeCorePoint corePoint;
         public float coreDiff;
+        public float borderDiff;
         public float coreAngle;
-
+        public bool isBusy = false;
+        public bool isBorder = false;
 
         public BiomePoint(int x, int y, BiomeCorePoint corePoint, int corePointId)
         {
@@ -74,15 +76,21 @@ namespace Assets.Scripts
 
         public List<Point> getArroundPoints()
         {
+            return this.getArroundPoints(1);
+        }
+
+        public List<Point> getArroundPoints(int a)
+        {
+            // TODO: Test mit Randpunkten?!
             List<Point> returnList = new List<Point>();
-            returnList.Add(new Point(this.x + 1, this.y));
-            returnList.Add(new Point(this.x + 1, this.y + 1));
-            returnList.Add(new Point(this.x + 1, this.y - 1));
-            returnList.Add(new Point(this.x - 1, this.y));
-            returnList.Add(new Point(this.x - 1, this.y + 1));
-            returnList.Add(new Point(this.x - 1, this.y - 1));
-            returnList.Add(new Point(this.x, this.y + 1));
-            returnList.Add(new Point(this.x, this.y - 1));
+            returnList.Add(new Point(this.x + a, this.y));
+            returnList.Add(new Point(this.x + a, this.y + a));
+            returnList.Add(new Point(this.x + a, this.y - a));
+            returnList.Add(new Point(this.x - a, this.y));
+            returnList.Add(new Point(this.x - a, this.y + a));
+            returnList.Add(new Point(this.x - a, this.y - a));
+            returnList.Add(new Point(this.x, this.y + a));
+            returnList.Add(new Point(this.x, this.y - a));
             return returnList;
         }
     }

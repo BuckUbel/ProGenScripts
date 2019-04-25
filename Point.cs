@@ -30,11 +30,17 @@ namespace Assets.Scripts
 
         public int getDiff(Point p)
         {
-            int a = (int)Math.Sqrt(Math.Pow(p.y - this.y, 2) + Math.Pow(p.x - this.x, 2));
+            return (int)getPythagorasDiff(p) + getPyramideDiff(p) / 2;
+        }
 
-            int b = (Math.Abs(p.y - this.y) + Math.Abs(p.x - this.x));
-            return (int)a + b / 2;
+        public int getPythagorasDiff(Point p)
+        {
+            return (int)Math.Sqrt(Math.Pow(p.y - this.y, 2) + Math.Pow(p.x - this.x, 2));
+        }
 
+        public int getPyramideDiff(Point p)
+        {
+            return (Math.Abs(p.y - this.y) + Math.Abs(p.x - this.x));
         }
     }
 }

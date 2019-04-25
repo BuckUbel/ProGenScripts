@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Boo.Lang;
+using Random = UnityEngine.Random;
 
 namespace Assets.Scripts
 {
@@ -9,6 +10,7 @@ namespace Assets.Scripts
         public string name;
         public List<BiomeCorePoint> corePoints = new List<BiomeCorePoint>();
         public List<BiomePoint> borderPoints = new List<BiomePoint>();
+        public List<BiomePoint> contentPoints = new List<BiomePoint>();
         public List<BiomePoint> allPoints = new List<BiomePoint>();
         public int textureIndex;
         public float globalPercentage;
@@ -36,7 +38,13 @@ namespace Assets.Scripts
 
         public void addBorderPoint(BiomePoint bp)
         {
+            bp.isBorder = true;
             this.borderPoints.Add(bp);
+        }
+        public void addContentPoint(BiomePoint bp)
+        {
+            bp.isBorder = false;
+            this.contentPoints.Add(bp);
         }
         public void addCorePoint(Point p)
         {
@@ -58,6 +66,12 @@ namespace Assets.Scripts
                 tempPoint.createRandom(0, xMax, 0, yMax);
                 this.addCorePoint(tempPoint);
             }
+        }
+
+        public BiomePoint getRandomPoint()
+        {
+            int randomNumber = (int)Random.Range(0, this.allPoints.Count - 1);
+            return this.allPoints[randomNumber];
         }
 
         public BiomeCorePoint getNearestPoint(Point point)
