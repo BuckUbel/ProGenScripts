@@ -13,6 +13,7 @@ namespace Assets.Scripts
         public float coreAngle;
         public bool isBusy = false;
         public bool isBorder = false;
+        public int indexInGlobalAllPoints;
 
         public BiomePoint(int x, int y, BiomeCorePoint corePoint, int corePointId)
         {

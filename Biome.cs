@@ -30,20 +30,23 @@ namespace Assets.Scripts
             this.mountainsDegree = mountainsDegree;
             this.isWater = isWater;
         }
-        public void addCompletlyNewBorderPoint(BiomePoint bp)
+        public void addCompletlyNewBorderPoint(BiomePoint bp, int index)
         {
+            bp.indexInGlobalAllPoints = index;
             this.borderPoints.Add(bp);
             this.allPoints.Add(bp);
         }
 
-        public void addBorderPoint(BiomePoint bp)
+        public void addBorderPoint(BiomePoint bp, int index)
         {
             bp.isBorder = true;
+            bp.indexInGlobalAllPoints = index;
             this.borderPoints.Add(bp);
         }
-        public void addContentPoint(BiomePoint bp)
+        public void addContentPoint(BiomePoint bp, int index)
         {
             bp.isBorder = false;
+            bp.indexInGlobalAllPoints = index;
             this.contentPoints.Add(bp);
         }
         public void addCorePoint(Point p)
