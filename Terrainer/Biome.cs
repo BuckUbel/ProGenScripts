@@ -8,6 +8,7 @@ namespace Assets.Scripts
     public class Biome
     {
         public string name;
+        public int startCoreIds;
         public List<BiomeCorePoint> corePoints = new List<BiomeCorePoint>();
         public List<BiomePoint> borderPoints = new List<BiomePoint>();
         public List<BiomePoint> contentPoints = new List<BiomePoint>();

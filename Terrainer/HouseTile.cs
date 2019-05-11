@@ -4,14 +4,15 @@ namespace Assets.Scripts
 {
     public class HouseTile
     {
+        public static int streetSize = 4;
         // Länge : Breite == 2 : 1
-        public static int preHouseLength = 6; // Türseite
-        public static int postHouseLength = 8; //Gartenseite
-        public static int houseWidth = 28; // 28 - 8 - 6 = 14 Breite
+        public static int preHouseLength = 7; // Türseite
+        public static int postHouseLength = 9; //Gartenseite
+        public static int houseWidth = 38; // 38 - 8 - 6 - (2 x 4) = 14 Breite
 
-        public static int preHouseWidth = 0; // links der TÜr
-        public static int postHouseWidth = 0; // rechts der Tür
-        public static int houseLength = 28; // 28 - 0 - 0 = 28 Länge
+        public static int preHouseWidth = 1; // links der TÜr
+        public static int postHouseWidth = 1; // rechts der Tür
+        public static int houseLength = 38; // 38 - 1 - 1 - (2 x 4) = 28 Länge
 
         // Breite zu Höhe == 3.3 : 1
         public static float stageHeight = 3.3f;
@@ -44,9 +45,11 @@ namespace Assets.Scripts
         private void setPoints(Point startPoint)
         {
             this.startPoint = startPoint;
-            this.renderPoint = new Point(startPoint.x + houseWidth / 2 + preHouseWidth - postHouseWidth,
-                startPoint.y + houseLength / 2 + preHouseLength - postHouseLength);
-
+            // street size is not immportant here, because, it is on each side equal
+            this.renderPoint = new Point(
+                startPoint.x + houseWidth / 2 + preHouseWidth - postHouseWidth,
+                startPoint.y + houseLength / 2 + preHouseLength - postHouseLength
+                );
         }
 
         private void Render()

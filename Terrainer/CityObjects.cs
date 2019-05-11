@@ -32,14 +32,14 @@ namespace Assets
             else
             {
                 GameObject[] stageObjects = new GameObject[stageCount];
-                int rndFloor = TerrainSaver.rnd.Next(groundFloors.Length);
+                int rndFloor = Terrainer.rnd.Next(groundFloors.Length);
                 stageObjects[0] = this.groundFloors[rndFloor];
-                int rndRoofTops = TerrainSaver.rnd.Next(rooftops.Length);
+                int rndRoofTops = Terrainer.rnd.Next(rooftops.Length);
                 stageObjects[stageCount-1] = this.rooftops[rndRoofTops];
 
                 for (int i = 1; i < stageCount - 1; i++)
                 {
-                    int rndStages = TerrainSaver.rnd.Next(stages.Length);
+                    int rndStages = Terrainer.rnd.Next(stages.Length);
                     stageObjects[i] = this.stages[rndStages];
                 }
                 

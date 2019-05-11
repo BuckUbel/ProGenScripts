@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using Assets.Scripts;
 using System.Linq;
 using Assets;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
-public class TerrainSaver : MonoBehaviour
+public class Terrainer : MonoBehaviour
 {
     public static System.Random rnd;
 
     //
     public int biomCount = 25;
-
-    [Header("First-Person")]
-    public GameObject FirstPersonGameObject;
+    public int terrainScalingFactor = 1;
+    // diff to the edge for the isle
+    public int isleDiff = 50;
 
     [Header("Biom-Verteilung")]
 
@@ -30,12 +31,29 @@ public class TerrainSaver : MonoBehaviour
     [Range(0, 1)]
     public float mountBiom = 0.1f;
 
+    [Header("First-Person")]
+    public GameObject FirstPersonGameObject;
+
+
+    private static int keyCountPerChest = 3;
+
+    private float playerRunSpeed = 10.0f;
+    private float playerJumpHeight = 10.0f;
+    private int playerKeyCount = 0;
+    private int playerDiamondCount = 0;
+
+
+    [Header("Collect&Win")]
+    public GameObject[] KeyGameObjects;
+    public int chestCount = 1;
+    public GameObject[] ChestGameObjects;
+    public GameObject[] CollectableGameObjects;
+
     // waterObject
     [Header("Wasser Objekt")]
     public GameObject waterObjectTransform;
 
     [Header("Stadt Objekte")]
-
     public GameObject[] cityGroundFloors;
     public GameObject[] cityStages;
     public GameObject[] cityRooftops;
@@ -47,7 +65,12 @@ public class TerrainSaver : MonoBehaviour
     public Texture2D waterTerrainTextures;
     public Texture2D fieldTerrainTextures;
     public Texture2D mountTerrainTextures;
+    public Texture2D streetTerrainTextures;
 
+    [Header("Bäume und Grässer")]
+    public GameObject[] treeObjects;
+    public GameObject grassObject;
+    public Texture2D grassTexture;
 
     // the standard height for the map
     // is necessary, because the water needs space under the normal map
@@ -72,6 +95,9 @@ public class TerrainSaver : MonoBehaviour
 
     // this multi-dimensional array contains the height of each point in the terrain
     private float[,] heightMap;
+
+    // this multi-dimensional array contains the biome index of each point in the terrain
+    private int[,] biomeMap;
 
     // this list contains all biomes
     private List<Biome> biomes = new List<Biome>();
@@ -103,22 +129,27 @@ public class TerrainSaver : MonoBehaviour
     // all house GameObjects
     private List<HouseTile> allHouses = new List<HouseTile>();
 
+    private int currentSeed;
+
     void randomGenerator()
     {
 
-        var seed = (new System.Random()).Next();
-        print(seed);
-        rnd = new System.Random(seed);
+        currentSeed = (new System.Random()).Next();
+        print(currentSeed);
+        rnd = new System.Random(currentSeed);
     }
 
     void createTerrainObject()
     {
-        this.BaseTerrainObj = new GameObject("TerrainO");
-
-        this.BaseTerrainData.size = new Vector3(512, 600, 512);
-        this.BaseTerrainData.heightmapResolution = 512;
+        this.BaseTerrainObj = new GameObject("TerrainIsle");
+        this.BaseTerrainObj.transform.parent = this.transform;
         this.BaseTerrainData.baseMapResolution = 1024;
-        this.BaseTerrainData.SetDetailResolution(1024, 16);
+        int baseResolution = (int)Math.Pow(2, 8 + terrainScalingFactor) + 1;
+        this.BaseTerrainData.SetDetailResolution(baseResolution, 16);
+        this.BaseTerrainData.heightmapResolution = baseResolution;
+        this.BaseTerrainData.alphamapResolution = baseResolution;
+
+        this.BaseTerrainData.size = new Vector3(baseResolution, 600, baseResolution);
 
         this.BaseTerrainCollider = this.BaseTerrainObj.AddComponent<TerrainCollider>();
         this.BaseTerrainCollider.terrainData = this.BaseTerrainData;
@@ -146,18 +177,25 @@ public class TerrainSaver : MonoBehaviour
         this.xTextureRes = tData.alphamapWidth;
         this.yTextureRes = tData.alphamapHeight;
 
+        this.alphaMap = new AlphaMap(new float[this.xTextureRes, this.yTextureRes, 6]);
+        this.biomeMap = new int[this.xTextureRes, this.yTextureRes];
+        this.heightMap = tData.GetHeights(0, 0, xTerrainRes, yTerrainRes);
+
+        //print("Width: " + xTerrainRes + " / " + xTextureRes + " / " + terrainWidthScale + " / " + tData.alphamapResolution);
+        //print("Length: " + yTerrainRes + " / " + yTextureRes + " / " + terrainLengthScale + " / " + tData.detailResolution);
+
     }
 
     void createBiomesAndTextures()
     {
         // generate the different Biomes
         this.biomes.Add(new Biome("city", 0, cityBiom, 0.05f, false));
-        this.biomes.Add(new Biome("forest", 1, forestBiom, 0.15f, false));
+        this.biomes.Add(new Biome("forest", 1, forestBiom, 0.2f, false));
         this.biomes.Add(new Biome("water", 2, waterBiom, 0.5f, true));
-        this.biomes.Add(new Biome("field", 3, fieldBiom, 0.2f, false));
-        this.biomes.Add(new Biome("mountain", 4, mountBiom, 0.6f, false));
+        this.biomes.Add(new Biome("field", 3, fieldBiom, 0.25f, false));
+        this.biomes.Add(new Biome("mountain", 4, mountBiom, 0.4f, false));
 
-        SplatPrototype[] terrainTextures = new SplatPrototype[5];
+        SplatPrototype[] terrainTextures = new SplatPrototype[6];
         for (int i = 0; i < terrainTextures.Length; i++)
         {
             terrainTextures[i] = new SplatPrototype();
@@ -167,27 +205,46 @@ public class TerrainSaver : MonoBehaviour
         terrainTextures[this.biomes[2].textureIndex].texture = this.waterTerrainTextures;
         terrainTextures[this.biomes[3].textureIndex].texture = this.fieldTerrainTextures;
         terrainTextures[this.biomes[4].textureIndex].texture = this.mountTerrainTextures;
+        terrainTextures[5].texture = this.streetTerrainTextures;
         tData.splatPrototypes = terrainTextures;
+
+        DetailPrototype[] grassDetailPrototype = new DetailPrototype[1];
+        grassDetailPrototype[0] = new DetailPrototype();
+        grassDetailPrototype[0].renderMode = DetailRenderMode.GrassBillboard;
+        grassDetailPrototype[0].prototypeTexture = this.grassTexture;
+
+        //grassDetailPrototype[0].renderMode = DetailRenderMode.Grass;
+        //grassDetailPrototype[0].renderMode = DetailRenderMode.VertexLit;
+        //grassDetailPrototype[0].prototype = this.grassObject;
+        //grassDetailPrototype[0].usePrototypeMesh = true;
+
+        grassDetailPrototype[0].bendFactor = 1.0f;
+        grassDetailPrototype[0].dryColor = new Color(150, 150, 0);
+        grassDetailPrototype[0].healthyColor = new Color(0, 255, 0);
+        grassDetailPrototype[0].minWidth = 0;
+        grassDetailPrototype[0].maxWidth = 2;
+        grassDetailPrototype[0].minHeight = 0;
+        grassDetailPrototype[0].maxHeight = 2;
+
+        tData.detailPrototypes = grassDetailPrototype;
+
+        tData.wavingGrassAmount = 0.5f;
+        tData.wavingGrassSpeed = 0.5f;
+        tData.wavingGrassStrength = 0.5f;
+
+        TreePrototype[] treePrototypes = new TreePrototype[3];
+        for (int i = 0; i < this.treeObjects.Length; i++)
+        {
+            treePrototypes[i] = new TreePrototype();
+            treePrototypes[i].prefab = this.treeObjects[i];
+        }
+        tData.treePrototypes = treePrototypes;
     }
 
-    void createPrefabObjects()
-    {
-        // load all Gameobjects in the other objects
-        this.CityGameObjects = new CityObjects(this.cityStages, this.cityGroundFloors, this.cityRooftops);
-
-        // ... other Objects
-    }
-
-    // the player must be initialized after each height-changing, else the collider is not working
-    void createPlayer()
-    {
-        this.Player = Instantiate(FirstPersonGameObject, new Vector3(0, this.playerStartHeight * terrainHeightScale, 0), Quaternion.identity);
-
-    }
     void Start()
     {
-        this.randomGenerator();
 
+        this.randomGenerator();
         this.createTerrainObject();
         this.createBiomesAndTextures();
         this.createPrefabObjects();
@@ -195,32 +252,107 @@ public class TerrainSaver : MonoBehaviour
         this.initializeMap();
         this.createGameObjects();
         this.createPlayer();
-    }
 
-    GameObject buildGameObjectFromTextureMap(GameObject newObject, Vector3 location, Vector3 scaling)
-    {
-        GameObject buildedGameObject = Instantiate(newObject, new Vector3(location.z - (terrainLengthScale / 2), (location.y - standardHeight) * terrainHeightScale, location.x - (terrainWidthScale / 2)), Quaternion.identity) as GameObject;
-        buildedGameObject.transform.localScale = scaling;
-        return buildedGameObject;
+        PrefabUtility.CreatePrefab("Assets/SaveData/ProGen/Terrains/" + currentSeed + ".prefab", this.BaseTerrainObj);
+        PrefabUtility.CreatePrefab("Assets/SaveData/ProGen/World/" + currentSeed + ".prefab", this.gameObject);
     }
-
-    void renderHouseTile(HouseTile ht)
+    void createPrefabObjects()
     {
-        for (int i = 0; i < ht.houseObjects.Length; i++)
+        // load all Gameobjects in the other objects
+        this.CityGameObjects = new CityObjects(this.cityStages, this.cityGroundFloors, this.cityRooftops);
+
+        // ... other Objects
+    }
+    void initializeMap()
+    {
+        resetPoints();
+        resetAlphaMaps();
+        this.createAlphaMaps();
+        this.calcBorders();
+        this.createMountainsByBorders();
+
+        // Get all of layer zero.
+        var map = tData.GetDetailLayer(0, 0, tData.detailWidth, tData.detailHeight, 0);
+
+        // For each pixel in the detail map...
+        for (var y = 0; y < tData.detailHeight; y++)
         {
+            for (var x = 0; x < tData.detailWidth; x++)
+            {
+                map[x, y] = 0;
+                if (this.biomeMap[x, y] == 1)
+                {
+                    map[x, y] = 1;
+                }
+                if (this.biomeMap[x, y] == 3)
+                {
+                    map[x, y] = 1;
+                }
+                if (this.biomeMap[x, y] == 4)
+                {
+                    map[x, y] = 1;
+                }
+            }
+        }
 
-            GameObject buildedGameObject = Instantiate(
-                ht.houseObjects[i],
-                new Vector3(
-                    ht.renderPoint.y - (terrainLengthScale / 2),
-                    ((ht.height - standardHeight) * terrainHeightScale) + (HouseTile.stageHeight*i),
-                    ht.renderPoint.x - (terrainWidthScale / 2)
-                ),
-                Quaternion.identity) as GameObject;
-            buildedGameObject.transform.localScale = new Vector3(HouseTile.houseScaleFactor, HouseTile.houseScaleFactor, HouseTile.houseScaleFactor);
+        // Assign the modified map back.
+        tData.SetDetailLayer(0, 0, 0, map);
+
+        // empty the old treeInstaces from persistent data
+        this.terrain.terrainData.treeInstances = new List<TreeInstance>().ToArray();
+        int[,] treeMap = new int[xTerrainRes, yTerrainRes];
+
+        int treeCount = 1000; // TODO: with global scaleFactor
+        int treeCounter = 0;
+
+        while (treeCounter < treeCount)
+        {
+            int xTreePos = rnd.Next(0, xTerrainRes);
+            int yTreePos = rnd.Next(0, yTerrainRes);
+            int treePrototypeNumber = -1;
+            if (this.biomeMap[xTreePos, yTreePos] == 1)
+            {
+                treePrototypeNumber = rnd.Next(0, 2);
+            }
+            if (this.biomeMap[xTreePos, yTreePos] == 3)
+            {
+                treePrototypeNumber = 0;
+            }
+            if (this.biomeMap[xTreePos, yTreePos] == 4)
+            {
+                treePrototypeNumber = 1;
+            }
+            if (treePrototypeNumber >= 0)
+            {
+                //TODO: scalefactor depends on the height of terrain
+                TreeInstance pTI = new TreeInstance();
+                float yPos = (float)xTreePos / (float)xTerrainRes;
+                float xPos = (float)yTreePos / (float)yTerrainRes;
+                pTI.position = new Vector3(xPos, 1, yPos);
+                float scaleFactor = (float)rnd.NextDouble();
+                pTI.widthScale = scaleFactor;
+                pTI.heightScale = scaleFactor;
+                pTI.color = Color.yellow;
+                pTI.lightmapColor = Color.yellow;
+                pTI.prototypeIndex = treePrototypeNumber; //?
+                this.terrain.AddTreeInstance(pTI);
+                treeCounter++;
+            }
         }
     }
 
+    void createGameObjects()
+    {
+
+        // create Waterobject
+        GameObject waterGameObject = Instantiate(waterObjectTransform, new Vector3(0, terrainHeightScale * waterHeight, 0), Quaternion.identity) as GameObject;
+        waterGameObject.transform.localScale = new Vector3(terrainWidthScale, 1, terrainLengthScale);
+        //PrefabUtility.ConnectGameObjectToPrefab(this.BaseTerrainObj, waterGameObject);
+        waterGameObject.transform.parent = this.transform;
+
+        this.createHouseGrid();
+
+    }
     void createHouseGrid()
     {
         //create city objects
@@ -304,9 +436,13 @@ public class TerrainSaver : MonoBehaviour
                     }
                 }
                 maxValue = diffValues.Max();
-                print(maxValue);
+                //print(maxValue);
                 // create houseTile
-                HouseTile ht = CityGameObjects.CreateHouse(tempPoint, 3, maxValue);
+                HouseTile ht = CityGameObjects.CreateHouse(tempPoint, (int)rnd.Next(2, 5), maxValue);
+                //for (int i = 0; i < ht.houseObjects.Length; i++)
+                //{
+                //    PrefabUtility.ConnectGameObjectToPrefab(this.BaseTerrainObj, ht.houseObjects[i]);
+                //}
                 allHouses.Add(ht);
                 renderHouseTile(ht);
                 // allHouses.Add(buildGameObjectFromTextureMap(this.CityGameObjects.GetHouseObjects(3), new Vector3(ht.renderPoint.x, maxValue, ht.renderPoint.y), new Vector3(houseScaleFactor, houseScaleFactor, houseScaleFactor)));
@@ -316,55 +452,206 @@ public class TerrainSaver : MonoBehaviour
         }
         print("Houses: " + gridPoints);
 
-        //tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
+        for (int i = 0; i < allHouses.Count; i++)
+        {
+            for (int j = 0; j < HouseTile.streetSize; j++)
+            {
+                for (int k = 0; k < HouseTile.houseWidth; k++)
+                {
+
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + k, allHouses[i].startPoint.y + j, 5] = 1;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + k, allHouses[i].startPoint.y + j, 0] = 0;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + j, allHouses[i].startPoint.y + k, 5] = 1;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + j, allHouses[i].startPoint.y + k, 0] = 0;
+                    //  this.alphaMap.aMap[allHouses[i].startPoint.x, allHouses[i].startPoint.y+j, 5] = 1;
+                    // this.alphaMap.aMap[allHouses[i].startPoint.x+j, allHouses[i].startPoint.y, 5] = 1;
+                }
+                for (int k = 0; k < HouseTile.houseLength; k++)
+                {
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + k, allHouses[i].startPoint.y + j + HouseTile.houseLength - HouseTile.streetSize, 5] = 1;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + k, allHouses[i].startPoint.y + j + HouseTile.houseLength - HouseTile.streetSize, 0] = 0;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + j + HouseTile.houseLength - HouseTile.streetSize, allHouses[i].startPoint.y + k, 5] = 1;
+                    this.alphaMap.aMap[allHouses[i].startPoint.x + j + HouseTile.houseLength - HouseTile.streetSize, allHouses[i].startPoint.y + k, 0] = 0;
+                }
+            }
+        }
+        tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
 
 
 
     }
-
-    void initializeMap()
+    //TODO: Tag Nacht | Windzone
+    // the player must be initialized after each height-changing, else the collider is not working
+    void createPlayer()
     {
-        resetPoints();
-        resetAlphaMaps();
-        this.createAlphaMaps();
-        this.calcBorders();
-        this.createMountainsByBorders();
+        Point playerPos = new Point((int)terrainWidthScale / 2, (int)terrainLengthScale / 2);
+        this.Player = Instantiate(FirstPersonGameObject, new Vector3(0, this.heightMap[playerPos.x, playerPos.y] * terrainHeightScale, 0), Quaternion.identity);
+        this.Player.transform.parent = this.transform;
 
+
+        // rb.col
     }
-
-    void createGameObjects()
+    public void CollisionDetected(string tagName, GameObject collidedGameObject)
     {
-        // create Waterobject
-        GameObject waterGameObject = Instantiate(waterObjectTransform, new Vector3(0, terrainHeightScale * waterHeight, 0), Quaternion.identity) as GameObject;
-        waterGameObject.transform.localScale = new Vector3(terrainWidthScale, 1, terrainLengthScale);
+        Debug.Log(tagName);
+        if (tagName == "Key")
+        {
+            this.playerKeyCount++;
+        }
+        if (tagName == "Chest")
+        {
+            ChestController cc = collidedGameObject.GetComponent<ChestController>();
 
-        this.createHouseGrid();
+            if (this.playerKeyCount >= keyCountPerChest && !cc.isUnlocked)
+            {
+                cc.Unlock();
+                this.playerKeyCount -= keyCountPerChest;
+            }
+        }
+        if (tagName == "Diamond")
+        {
+            DiamondController dc = collidedGameObject.GetComponent<DiamondController>();
+            this.playerDiamondCount += dc.value;
+            if (this.playerDiamondCount > 999)
+            {
+                this.playerDiamondCount = 999;
+            }
+        }
+    }
+    GameObject buildGameObjectFromTextureMap(GameObject newObject, Vector3 location, Vector3 scaling)
+    {
+        GameObject buildedGameObject = Instantiate(newObject, new Vector3(location.z - (terrainLengthScale / 2), (location.y - standardHeight) * terrainHeightScale, location.x - (terrainWidthScale / 2)), Quaternion.identity) as GameObject;
+        buildedGameObject.transform.localScale = scaling;
+        return buildedGameObject;
+    }
 
+    void renderHouseTile(HouseTile ht)
+    {
+        for (int i = 0; i < ht.houseObjects.Length; i++)
+        {
+
+            GameObject buildedGameObject = Instantiate(
+                ht.houseObjects[i],
+                new Vector3(
+                    ht.renderPoint.y - (terrainLengthScale / 2),
+                    ((ht.height - standardHeight) * terrainHeightScale) + (HouseTile.stageHeight * i),
+                    ht.renderPoint.x - (terrainWidthScale / 2)
+                ),
+                Quaternion.identity) as GameObject;
+            buildedGameObject.transform.localScale = new Vector3(HouseTile.houseScaleFactor, HouseTile.houseScaleFactor, HouseTile.houseScaleFactor);
+            buildedGameObject.transform.parent = this.transform;
+        }
+
+        GameObject chestGameObject = Instantiate(
+            this.ChestGameObjects[0],
+            new Vector3(
+            ht.startPoint.y - (terrainLengthScale / 2),
+            ((ht.height - standardHeight) * terrainHeightScale),
+            ht.startPoint.x - (terrainWidthScale / 2)),
+            Quaternion.identity) as GameObject;
+        chestGameObject.transform.parent = this.transform;
+
+        int rndDiamontNumber = rnd.Next(0, this.CollectableGameObjects.Length);
+
+        GameObject diamonGameObject = Instantiate(
+            this.CollectableGameObjects[rndDiamontNumber],
+            new Vector3(
+                ht.startPoint.y - (terrainLengthScale / 2),
+                ((ht.height - standardHeight) * terrainHeightScale) + 0.2f,
+                ht.startPoint.x - (terrainWidthScale / 2)),
+            Quaternion.identity) as GameObject;
+        diamonGameObject.transform.localScale = new Vector3(25, 25, 25);
+        diamonGameObject.transform.parent = this.transform;
+
+        int rndChestNumber = rnd.Next(0, this.KeyGameObjects.Length);
+
+        GameObject keyGameObject = Instantiate(
+            this.KeyGameObjects[rndChestNumber],
+            new Vector3(
+                ht.startPoint.y - (terrainLengthScale / 2) + HouseTile.houseWidth,
+                ((ht.height - standardHeight) * terrainHeightScale) + 1,
+                ht.startPoint.x - (terrainWidthScale / 2)),
+            Quaternion.identity) as GameObject;
+
+        keyGameObject.transform.parent = this.transform;
 
     }
 
-    // generate the GUI
+    private float barDisplay = 0;
+    public Texture2D keyImageSprite;
+
+    void Update()
+    {
+        // for this example, the bar display is linked to the current time,
+        // however you would set this value based on your desired display
+        // eg, the loading progress, the player's health, or whatever.
+        barDisplay = Time.time * 0.05f;
+    }
     void OnGUI()
     {
+        //Vector2 pos = new Vector2(20, 40);
+        //Vector2 size = new Vector2(60, 20);
+        //Texture2D progressBarEmpty = this.waterTerrainTextures;
+        //Texture2D progressBarFull = this.cityTerrainTextures;
 
-        // the functions, which will called, if the button is clicked
-        if (GUI.Button(new Rect(10, 10, 100, 25), "Generate"))
-        {
-            this.initializeMap();
-        }
-        if (GUI.Button(new Rect(10, 40, 100, 25), "Create Objects"))
-        {
-            this.createGameObjects();
-            this.createPlayer();
-        }
 
-        if (GUI.Button(new Rect(10, 70, 100, 25), "Reset"))
+        //// draw the background:
+        //GUI.BeginGroup(new Rect(pos.x, pos.y, size.x, size.y));
+        //GUI.Box(new Rect(0, 0, size.x, size.y), progressBarEmpty);
+
+        //// draw the filled-in part:
+        //GUI.BeginGroup(new Rect(0, 0, size.x * barDisplay, size.y));
+        //GUI.Box(new Rect(0, 0, size.x, size.y), progressBarFull);
+        //GUI.EndGroup();
+
+        //GUI.EndGroup();
+
+        for (int i = 0; i < playerKeyCount; i++)
         {
-            resetPoints();
-            resetAlphaMaps();
+            GUI.DrawTexture(new Rect(10 + i * 50, 10, 50, 50), keyImageSprite);
+            if (i > 3)
+            {
+                // TODO: Plus image
+                GUI.DrawTexture(new Rect(10 + i * 50, 10, 50, 50), keyImageSprite);
+                break;
+            }
         }
+        GUI.Label(new Rect(Screen.width - 100, 10, 100, 100), "Diamanten: "+ this.playerDiamondCount);
+
+        //GUI.Box(new Rect(Screen.width / 2 - 100, 25, 100, 30), "Startmenu");
+
+        //// Make the first button. If it is pressed, Application.Loadlevel (1) will be executed
+        //if (GUI.Button(new Rect(Screen.width / 2 - 40, Screen.height / 2 - 10, 80, 20), "Generate a new map"))
+        //{
+
+        //    playerRunSpeed = GUI.HorizontalSlider(new Rect(Screen.width / 2 - 50, Screen.height - 50, 100, 25), playerRunSpeed, 10.0f, 50.0f);
+        //    playerJumpHeight = GUI.HorizontalSlider(new Rect(Screen.width / 2 - 50, Screen.height - 25, 100, 25), playerJumpHeight, 10.0f, 50.0f);
+        //}
+
 
     }
+    // generate the GUI
+    //void OnGUI()
+    //{
+
+    //    // the functions, which will called, if the button is clicked
+    //    if (GUI.Button(new Rect(10, 10, 100, 25), "Generate"))
+    //    {
+    //        this.initializeMap();
+    //    }
+    //    if (GUI.Button(new Rect(10, 40, 100, 25), "Create Objects"))
+    //    {
+    //        this.createGameObjects();
+    //        this.createPlayer();
+    //    }
+
+    //    if (GUI.Button(new Rect(10, 70, 100, 25), "Reset"))
+    //    {
+    //        resetPoints();
+    //        resetAlphaMaps();
+    //    }
+
+    //}
 
     // get the id of a specific biome from the biome-list, with a specific textureIndex
     public int getBiomeIndexByTextureIndex(int textureIndex)
@@ -418,11 +705,11 @@ public class TerrainSaver : MonoBehaviour
          for (int a = 0; a < this.biomes.Count; a++)
           {
               print(this.biomes[a].name + " : " + this.biomes[a].borderPoints.Count);
-         
+
                     for (int j = 0; j < this.biomes[a].borderPoints.Count; j++)
                    {
                       this.alphaMap.aMap[this.biomes[a].borderPoints[j].x, this.biomes[a].borderPoints[j].y, this.biomes[a].textureIndex] = 0;
-         
+
                  }
             }
            tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
@@ -465,6 +752,7 @@ public class TerrainSaver : MonoBehaviour
         this.allCorePoints = new List<BiomeCorePoint>();
         for (int i = 0; i < this.biomes.Count; i++)
         {
+            this.biomes[i].startCoreIds = this.allCorePoints.Count;
             this.allCorePoints.AddRange(this.biomes[i].corePoints);
         }
     }
@@ -494,12 +782,14 @@ public class TerrainSaver : MonoBehaviour
 
     void createAlphaMaps()
     {
-        this.alphaMap = new AlphaMap(new float[this.xTextureRes, this.yTextureRes, 5]);
-
+        int alphaMapWidth = xTextureRes;
+        int alphaMapLength = yTextureRes;
         for (int i = 0; i < this.biomes.Count; i++)
         {
-            this.biomes[i].createRandomPoints(this.biomCount, this.xTextureRes, this.yTextureRes);
+            this.biomes[i].createRandomPoints(this.biomCount, alphaMapWidth, alphaMapLength);
         }
+
+        this.biomes[2].addCorePoint(new BiomeCorePoint(0, 0, this.biomes[2].textureIndex));
 
         this.getUpdateAllCorePoints();
 
@@ -512,10 +802,10 @@ public class TerrainSaver : MonoBehaviour
         int secondMinIndex = -1;
 
         // For each point on the alphamap...
-        for (int y = 0; y < this.yTextureRes; y++)
+        for (int y = 0; y < alphaMapLength; y++)
 
         {
-            for (int x = 0; x < this.xTextureRes; x++)
+            for (int x = 0; x < alphaMapWidth; x++)
             {
                 // reset values for diff calculation
                 diffValues = new List<int>();
@@ -524,25 +814,38 @@ public class TerrainSaver : MonoBehaviour
 
                 tempPoint.set(x, y);
 
-                // get the smallest diff to a core
-                for (int corePointIndex = 0; corePointIndex < this.allCorePoints.Count; corePointIndex++)
+                if (x > isleDiff && x < alphaMapWidth - isleDiff && y > isleDiff && y < alphaMapLength - isleDiff)
                 {
-                    int corePointDiff = this.allCorePoints[corePointIndex].getDiff(tempPoint);
-                    diffValues.Add(corePointDiff);
-                    if (corePointDiff < minValue)
-                    {
-                        secondMinValue = minValue;
-                        secondMinIndex = minIndex;
 
-                        minValue = corePointDiff;
-                        minIndex = corePointIndex;
-
-                    }
-                    else if (corePointDiff < secondMinValue)
+                    // get the smallest diff to a core
+                    for (int corePointIndex = 0; corePointIndex < this.allCorePoints.Count; corePointIndex++)
                     {
-                        secondMinValue = corePointDiff;
-                        secondMinIndex = corePointIndex;
+                        int corePointDiff = this.allCorePoints[corePointIndex].getDiff(tempPoint);
+                        diffValues.Add(corePointDiff);
+                        if (corePointDiff < minValue)
+                        {
+                            secondMinValue = minValue;
+                            secondMinIndex = minIndex;
+
+                            minValue = corePointDiff;
+                            minIndex = corePointIndex;
+
+                        }
+                        else if (corePointDiff < secondMinValue)
+                        {
+                            secondMinValue = corePointDiff;
+                            secondMinIndex = corePointIndex;
+                        }
                     }
+                }
+                else
+                {
+
+                    secondMinValue = 2;
+                    secondMinIndex = this.biomes[2].startCoreIds + this.biomes[2].corePoints.Count - 1;
+
+                    minValue = 0;
+                    minIndex = this.biomes[2].startCoreIds + this.biomes[2].corePoints.Count - 1;
                 }
 
 
@@ -555,7 +858,9 @@ public class TerrainSaver : MonoBehaviour
 
                 // added to the allPoint List of the biome
                 this.alphaMap.aMap[x, y, allCorePoints[minIndex].textureIndex] = (float)1;
-                this.biomes[this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex)].allPoints.Add(newBiomePoint);
+                int biomeId = this.getBiomeIndexByTextureIndex(allCorePoints[minIndex].textureIndex);
+                this.biomeMap[x, y] = biomeId;
+                this.biomes[biomeId].allPoints.Add(newBiomePoint);
 
 
                 // border point --> points with almost equal distances to two cores
@@ -604,6 +909,7 @@ public class TerrainSaver : MonoBehaviour
         int minIndex;
         int maxMountainWidth;
         float maxHeight;
+        int allMountCount = 0;
         resetPoints();
 
         this.heightMap = tData.GetHeights(0, 0, xTerrainRes, yTerrainRes);
@@ -612,10 +918,13 @@ public class TerrainSaver : MonoBehaviour
         {
             if (this.biomes[i].borderPoints.Count > 0)
             {
-                biomeSize = 10000 * this.biomes[i].allPoints.Count / this.allPoints.Count;
+                biomeSize = (int)(10000 * ((float)this.biomes[i].allPoints.Count / (float)this.allPoints.Count));
                 mountPercentage = this.biomes[i].mountainsDegree;
                 //print(biomeSize);
                 mountCount = (int)(biomeSize * mountPercentage);
+
+                //print(this.biomes[i].name + ": " + this.biomes[i].allPoints.Count + " / " + this.allPoints.Count + " = " + biomeSize + " | " + mountCount);
+
                 for (int j = 0; j < mountCount; j++)
                 {
                     newPoint = this.biomes[i].allPoints[Random.Range(0, this.biomes[i].allPoints.Count)];
@@ -650,19 +959,63 @@ public class TerrainSaver : MonoBehaviour
                                 {
                                     maxHeight = (-1) * maxHeight;
                                 }
-                                this.heightMap[x, y] = this.heightMap[x, y] + calcHeight(diff, maxMountainWidth, maxHeight) - calcHeight(maxMountainWidth, maxMountainWidth, maxHeight);
+                                //this.heightMap[x, y] = this.heightMap[x, y] + calcHeight(diff, maxMountainWidth, maxHeight) - calcHeight(maxMountainWidth, maxMountainWidth, maxHeight);
+                                this.heightMap[x, y] =
+                                    this.heightMap[x, y] +
+                                    ((float)maxHeight *
+                                     (float)Math.Cos((Math.PI * (float)diff) /
+                                                      (2 * (float)maxMountainWidth))); // +maxHeight/2;
                             }
 
                         }
                     }
-
+                    allMountCount++;
                 }
             }
         }
 
+        for (int i = 0; i < this.isleDiff; i++)
+        {
+            for (int j = 0; j < yTerrainRes; j++)
+            {
+
+                // complete left side
+                newPoint = new Point(i, j);
+                diff = newPoint.getPyramideDiff(new Point(isleDiff, j));
+                this.heightMap[i, j] += this.normalHeightCalc(diff, isleDiff);
+
+                // complete right side
+                newPoint = new Point(xTerrainRes - isleDiff + i, j);
+                diff = newPoint.getPyramideDiff(new Point(xTerrainRes - isleDiff, j));
+                this.heightMap[xTerrainRes - isleDiff + i, j] += this.normalHeightCalc(diff, isleDiff);
+            }
+
+            for (int j = 0; j < xTerrainRes; j++)
+            {
+                // complete top side
+                newPoint = new Point(j, i);
+                diff = newPoint.getPyramideDiff(new Point(j, isleDiff));
+                this.heightMap[j, i] += this.normalHeightCalc(diff, isleDiff);
+
+                // complete bottom side
+                newPoint = new Point(j, i + yTerrainRes - isleDiff);
+                diff = newPoint.getPyramideDiff(new Point(j, yTerrainRes - isleDiff));
+                this.heightMap[j, i + yTerrainRes - isleDiff] += this.normalHeightCalc(diff, isleDiff);
+            }
+        }
+
+        print("Mountains: " + allMountCount);
         this.setHeightMapWithStandardHeights();
         tData.SetAlphamaps(0, 0, this.alphaMap.aMap);
 
+    }
+
+    float normalHeightCalc(float x, float range)
+    {
+        float maxHeight = standardHeight / 2;
+        float zeroPointWidth = (1 / (range * 2));
+        float cosValue = (float)Math.Cos(zeroPointWidth * Math.PI * x);
+        return maxHeight * (cosValue + 1) - standardHeight;
     }
 
     // set a new heightmap and add the standardheight
@@ -684,7 +1037,7 @@ public class TerrainSaver : MonoBehaviour
     // reset all textures
     void resetAlphaMaps()
     {
-        float[,,] map = new float[this.xTextureRes, this.yTextureRes, 5];
+        float[,,] map = new float[this.xTextureRes, this.yTextureRes, 6];
         tData.SetAlphamaps(0, 0, map);
     }
 

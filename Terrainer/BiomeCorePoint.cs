@@ -9,7 +9,6 @@ namespace Assets.Scripts
         public float coreDiff;
         public float coreAngle;
 
-
         public BiomeCorePoint(int x, int y, int textureIndex)
         {
             this.set(x, y, textureIndex);
