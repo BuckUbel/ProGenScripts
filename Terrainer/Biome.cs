@@ -90,5 +90,6 @@ namespace Assets.Scripts
             var minIndex = diffValues.IndexOf(minValue);
             return this.corePoints[minIndex];
         }
+
     }
 }

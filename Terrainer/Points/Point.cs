@@ -24,13 +24,13 @@ namespace Assets.Scripts
 
         public void createRandom(int minX, int maxX, int minY, int maxY)
         {
-            this.x = Random.Range(minX, maxX);
-            this.y = Random.Range(minY, maxY);
+            this.x = Terrainer.rnd.Next(minX, maxX);
+            this.y = Terrainer.rnd.Next(minY, maxY);
         }
 
         public int getDiff(Point p)
         {
-            return (int)getPythagorasDiff(p) + getPyramideDiff(p) / 2;
+            return (int)(getPythagorasDiff(p) + getPyramideDiff(p)) / 2;
         }
 
         public int getPythagorasDiff(Point p)

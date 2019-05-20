@@ -4,14 +4,19 @@ using UnityEngine;
 
 namespace Assets
 {
-    public class CityObjects
+    public class GameObjectContainer
     {
 
         public GameObject[] stages;
         public GameObject[] groundFloors;
         public GameObject[] rooftops;
 
-        public CityObjects(GameObject[] stages, GameObject[] groundFloors, GameObject[] rooftops)
+        public GameObject[] chests;
+        public GameObject[] keys;
+        public GameObject[] diamonds;
+
+
+        public GameObjectContainer(GameObject[] stages, GameObject[] groundFloors, GameObject[] rooftops)
         {
             this.stages = stages;
             this.groundFloors = groundFloors;
@@ -20,9 +25,10 @@ namespace Assets
 
         public HouseTile CreateHouse(Point startPoint, int stageCount, float height)
         {
-            return new HouseTile(startPoint, this.GetHouseObjects(stageCount), height);
+            return new HouseTile(startPoint, this.GetHouseObjects(stageCount), stageCount, height);
         }
 
+        // TODO: return RenderObjects
         public GameObject[] GetHouseObjects(int stageCount)
         {
             if (stageCount < 2)
