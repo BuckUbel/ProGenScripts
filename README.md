@@ -42,7 +42,7 @@
 
 [3.6.1 Wasser](#Wasser)
 
-[3.6.2 Gräser und Bäume](<#Gräser und Bäume)
+[3.6.2 Gräser und Bäume](<#Gräser und Bäume>)
 
 **[4. Spielumsetzung](#Spielumsetzung)**
 
