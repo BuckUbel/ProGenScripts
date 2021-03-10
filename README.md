@@ -4,17 +4,17 @@
 
 ## Inhaltsverzeichnis
 
-[**1. Einleitung**](#Einleitung)
+**[1. Einleitung](#Einleitung)**
 
 [1.1 Motivation](#Motivation)
 
 [1.2 Zielsetzung](#Zielsetzung)
 
-[**2. Modellierung in 3ds Max**](#Modellierung in 3ds Max)
+**[2. Modellierung in 3ds Max](<#Modellierung in 3ds Max>)**
 
-[**3. Generierung in Unity**](#Generierung in Unity)
+**[3. Generierung in Unity](<#Generierung in Unity>)**
 
-[3.1 Ablauf des Skripts](#Ablauf des Skripts)
+[3.1 Ablauf des Skripts](<#Ablauf des Skripts>)
 
 [3.2 Terrain](#Terrain)
 
@@ -26,32 +26,33 @@
 
 [3.4 Berge](#Berge)
 
-[3.4.1 Mathematischer Ansatz](#Mathematischer Ansatz)
+[3.4.1 Mathematischer Ansatz](<#Mathematischer Ansatz>)
 
-[3.4.2 Konkrete Umsetzung](#Konkrete Umsetzung)
+[3.4.2 Konkrete Umsetzung](<#Konkrete Umsetzung>)
 
-[3.4.3 Sonderfall Wasser](#Sonderfall Wasser)
+[3.4.3 Sonderfall Wasser](<#Sonderfall Wasser>)
 
 [3.5 Stadt-Generierung](#Stadt-Generierung)
 
-[3.5.1 Abgrenzung von Hausgrundstücken](#Abgrenzung von Hausgrundstücken)
+[3.5.1 Abgrenzung von Hausgrundstücken](<#Abgrenzung von Hausgrundstücken>)
 
-[3.5.2 Erstellung eines Hauses](#Erstellung eines Hauses)
+[3.5.2 Erstellung eines Hauses](<#Erstellung eines Hauses>)
 
-[3.6 Weitere Landschaftsobjekte](#Weitere Landschaftsobjekte)
+[3.6 Weitere Landschaftsobjekte](<#Weitere Landschaftsobjekte>)
 
 [3.6.1 Wasser](#Wasser)
 
-[3.6.2 Gräser und Bäume](#Gräser und Bäume)
+[3.6.2 Gräser und Bäume](<#Gräser und Bäume)
 
-[**4. Spielumsetzung**](#Spielumsetzung)
+**[4. Spielumsetzung](#Spielumsetzung)**
 
 [4.1 Ladebildschirm](#Ladebildschirm)
 
-[4.2 Allgemeines Spiel](#Allgemeines Spiel)
+[4.2 Allgemeines Spiel](<#Allgemeines Spiel>)
 
-[**5. Fazit**](#Fazit)
+**[5. Fazit](#Fazit)**
 
+-----
 
 ## Einleitung
 
@@ -76,6 +77,7 @@ Zu erstellende Elemente:
 
 ●   Flüsse
 
+-----
 
 ## Modellierung in 3ds Max
 
@@ -112,6 +114,8 @@ Dort wurde als Angabe für die Höhe 2,7 angegeben, um gemeinsam mit der Höhe d
 Die Fenster und Türen wurden zunächst unabhängig von den jeweils anderen Etagen-Modellen gewählt, ebenfalls um eine große Variabilität zu sichern. Im Verlaufe der Entwicklung stellte sich dies jedoch als unvorteilhaft heraus, da unterschiedliche Abstände zwischen Fenstern den Häusern ein unstimmiges Aussehen verlieh. Daher wurden die Etagen-Modelle nochmals so aufeinander abgestimmt, dass die Fenster harmonischer wirken.
 
 Als variierende Elemente wurden Balkone und längere Fensterfronten gewählt. Auf diese Weise wurden mehrere verschiedene Erdgeschosse, Etagen und Dächer erstellt, die sich voneinander unterscheiden und miteinander kombiniert werden können.
+
+-----
 
 ## Generierung in Unity
 
@@ -234,7 +238,7 @@ Die Berechnung des Abstandes kann auf der Grundlage verschiedener Ansätze vorge
 
 Der erste Ansatz war es, den Satz des Pythagoras zu nutzen. Das heißt, die Wurzel der Summe der beiden Quadrate der Differenzen der Koordinaten (also der Entfernung jeweils auf der X-Achse und auf der Y-Achse) wurde gebildet:
 
-![img](assets/clip_image028.gif)
+![img](assets/clip_image028.png)
 
 So erhält man den exakten Abstand beider Punkte. Durch die Berechnung des kürzesten Abstands entstehen jedoch sehr eckige Ergebnisse:
 
@@ -242,7 +246,7 @@ So erhält man den exakten Abstand beider Punkte. Durch die Berechnung des kürz
 
 Der nächste Ansatz war, die Summe der Beträge von den Differenzen Koordinaten zu bilden:
 
-![img](assets/clip_image032.gif)
+![img](assets/clip_image032.png)
 
 Diese Funktion wird nachfolgend als Pyramiden-Funktion bezeichnet. Bei dieser erscheinen die Biome etwas runder, wirken jedoch immer noch etwas eckig:
 
@@ -250,7 +254,7 @@ Diese Funktion wird nachfolgend als Pyramiden-Funktion bezeichnet. Bei dieser er
 
 Da der erste Ansatz mehr Geraden und der zweite Ansatz mehr Ecken aufweist, war die Überlegung beide Ansätze miteinander zu kombinieren. Dazu bildet man aus beiden den Durchschnitt:
 
-![img](assets/clip_image036.gif)
+![img](assets/clip_image036.png)
 
 Das Ergebnis unter Einbeziehung beider Ansätze sieht folgendermaßen aus:
 
@@ -258,7 +262,7 @@ Das Ergebnis unter Einbeziehung beider Ansätze sieht folgendermaßen aus:
 
 Die daraus resultierende Verteilung der Biome besitzt sowohl Geraden als auch abgeschwächte Ecken. Um eine der Eigenschaften mehr ins Gewicht fallen zu lassen, kann man die einzelnen Ansätze durch Faktoren beeinflussen:
 
-![img](assets/clip_image040.gif)
+![img](assets/clip_image040.png)
 
 Die unter Einbeziehung beider Faktoren errechnete Verteilung erschien im Vergleich am organischsten. Daher wurde diese Abstandsberechnung implementiert.
 
@@ -286,7 +290,7 @@ Weiterhin muss sie verschiedene Parameter nutzen, um einen entsprechenden Berg z
 
 Eine Funktion, die diese Anforderungen erfüllt ist die Kosinusfunktion:
 
-![img](assets/clip_image048.gif)
+![img](assets/clip_image048.png)
 
 Hierbei steht der Parameter *a* für die maximale Höhe des zu erstellenden Berges und der Parameter *b* für die maximale Breite. Diese Werte müssen nun noch so gewählt werden, dass homogen wirkende Berge entstehen. Diese werden im folgenden Kapitel *3.4.2 Konkrete Umsetzung* geklärt.
 
@@ -352,11 +356,11 @@ Um Wasser in der Landschaft darzustellen, wird ein Wasserpegel festgelegt. Diese
 
 An den grün markierten Linien ist der Abstand die Hälfte der Terrain-Länge *a* minus dem Abstand *b* 
 
-![img](assets/clip_image060.gif)
+![img](assets/clip_image060.png)
 
 An den rot markierten Linien ist der Abstand kleiner. Er kann durch folgende Formel errechnet werden:
 
-![img](assets/clip_image062.gif)
+![img](assets/clip_image062.png)
 
  Ein Blick von der Ecke des Terrains sieht dann folgendermaßen aus (b=100):
 
@@ -376,6 +380,8 @@ Gräser werden an jeder Stelle der entsprechenden Biome angezeigt. Der Detail-La
 
 Für die Bäume wird eine Anzahl festgelegt, beispielsweise 1.000 Stück. Danach wird eine zufällige Position berechnet. Wenn diese in den gerade beschriebenen Biomen liegt, wird dort ein Baum instanziiert. Welche Art Baum (Nadel- oder Laubbaum) wird anhand des Biomes festgelegt. Auf Bergen wachsen nur Nadelbäume, auf dem Feld nur Laubbäume und in den Wäldern beide Arten von Bäumen. Dazu wird die Größe der Bäume zufällig verändert, damit nicht alle Bäume gleich aussehen.
 
+-----
+
 ## Spielumsetzung
 
 ### Ladebildschirm
@@ -391,6 +397,8 @@ Das Spielprinzip ist bewusst sehr einfach gehalten, da sich diese Arbeit vorrang
 Wenn das Spiel gestartet wird, erscheint ein Startbildschirm, auf dem der Spieler den “Generieren”-Knopf betätigen muss. Sobald dies geschehen ist, wechselt das Spiel zum Ladebildschirm. Wenn das Generieren abgeschlossen ist, kann der Spieler die Welt als First-Person-Objekt erkunden. Er startet an einem Haus (vergleiche *3.1 Ablauf des Skripts*). In der obersten Etage der Häuser kann er Schlüssel finden. Besitzt er mindestens drei Schlüssel, kann er eine der Truhen öffnen, die in der Stadt verteilt sind. In diesen Truhen sind blaue und rote Diamanten versteckt, die von unterschiedlichem Wert sind. In jedem Stadtkern kann der Spieler drei Schlüssel und eine Truhe finden. Ziel des Spieles ist es, den Gegenwert aller in den Truhen versteckten Diamanten zu finden. Wenn dem Spieler dies gelungen ist, wird auf dem Bildschirm “Gewonnen!” ausgegeben und das Spiel ist vorbei. Das Spiel kann jederzeit mit der Escape-Taste beendet werden.
 
 Statt die Schlüssel zu suchen, kann der Spieler außerdem grüne Diamanten sammeln, um die Diamanten-Punktezahl zu erhöhen. Die grünen Diamanten können in den anderen Biomen gefunden werden, sind jedoch weniger Wert als in Truhen versteckte Diamanten.
+
+-----
 
 ## Fazit
 
